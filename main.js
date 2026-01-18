@@ -2,36 +2,49 @@
    CONFIG
    -------------------------- */
 
-// Lazy loader base path
-const LAZY_BASE = 'https://cdn.jsdelivr.net/gh/blurplebun/blurplebun.github.io/';
-const LOCAL_MODE = 0; // if you don't use a cdn service to load images, just set this to true
+// What to open if menu logo is clicked in orbit mode?
+let menuLogoRedirect = 'info';  // uses 'menuId:cardId'
 
-// Sound control
-const INIT_MASTER_VOL = 1;
-const INIT_BGM_MASTER_VOL = 0.75;
-const INIT_SFX_MASTER_VOL = 1;
-let SFX_CLICK_VOL = 0.4;
-let SFX_LINK_VOL = 0.3;
-let SFX_PAGE_CLOSE_VOL = 0.5;
-let SFX_PAGE_OPEN_VOL = 0.5;
-let SFX_SWAP_VOL = 0.4;
-let SFX_WARP_VOL = 0.4;
+// where Character Rules information is located?
+const ocRulesLocation = 'info:ocrules';  // uses 'menuId:cardId'
 
-let MASTER_VOL = INIT_MASTER_VOL;
-let BGM_MASTER_VOL = INIT_BGM_MASTER_VOL;
-let SFX_MASTER_VOL = 0;
 
-// If you prefer to always use an orbit-less interface, set this to true
+
 let SIMPLE_MODE = getSimpleMode();
+// If you prefer to always use an orbit-less interface, set this to true
+// SIMPLE_MODE = true;
+
 // Simple mode index data
 const MAIN_MENU_TITLE = 'Main Menu';
-const MAIN_MENU_SUBTITLE = 'Welcome to the Fyberverse!';
+const MAIN_MENU_SUBTITLE = 'Welcome!';
 const SIMPLE_MODE_MENU_LOGO_SCALE = 1.5;
 
+
+
+// Higher FPS make the orbits move smoother but affect performance
 const ORBIT_FPS = 20;
 
-// Links
+
+
+// The embed folder where links are stored.
+
+// if you prefer to use regular links (which does not support embed, formatted as domain.com/?m=<menuId>&i=<cardId>), set this to ""
+
+// otherwise, make sure you regularly run generate-e.js to update the embed folder before deploying your website.
+// if not, the links may not function properly and return a 404 page.
 const eFolder = "e";
+
+// Lazy loader base path
+// if you don't know what this is, leave it as is.
+
+// const LAZY_BASE = ''; // the url to your cdn
+const LOCAL_MODE = 1;
+
+
+
+
+
+
 
 
 
@@ -87,85 +100,6 @@ menuStage.style.transform = `translate(0px, 0px) scale(${getCSSVar('--menu-stage
 
 let appLoaded = false;
 
-
-// --------------------------
-// BGM SYSTEM
-// --------------------------
-
-// Declare all BGM elements
-const bgm = {
-    fyberverse: document.getElementById("bgmFyberverse"),
-    deltadim: document.getElementById("bgmDeltadim"),
-    floriverse: document.getElementById("bgmFloriverse"),
-    digirel: document.getElementById("bgmDigirel"),
-    nansenz: document.getElementById("bgmNansenz"),
-    hizen: document.getElementById("bgmHizen"),
-    nadir: document.getElementById("bgmNadir"),
-};
-
-const menuToBgm = {
-    deltadim: "deltadim",
-    floriverse: "floriverse",
-    digirel: "digirel",
-    nansenz: "nansenz",
-    hizen: "hizen",
-    nadir: "nadir",
-};
-
-const silentMenus = new Set([
-    "yolkspocketdimension",
-]);
-
-// Currently active background music
-let currentBgm = "fyberverse";
-let bgmEnabled = false;
-
-// Fade helper
-function fadeVolume(audio, t, speed = 0.02) {
-    const target = t * BGM_MASTER_VOL;
-    if (!audio) return;
-    clearInterval(audio._fadeInterval);
-
-    // Clamp speed to prevent overshooting
-    const effectiveSpeed = Math.min(speed, 1); // Cap at 0.1 max
-
-    audio._fadeInterval = setInterval(() => {
-        const currentVol = audio.volume;
-        const diff = target - currentVol;
-        // If we're close enough to target, snap to it
-        if (Math.abs(diff) < 0.01) {
-            audio.volume = target;
-            clearInterval(audio._fadeInterval);
-            return;
-        }
-        // Calculate step size based on remaining difference
-        let step = diff * 0.1;
-        if (Math.abs(step) > effectiveSpeed) {
-            step = (diff > 0 ? effectiveSpeed : -effectiveSpeed);
-        }
-
-        audio.volume = currentVol + step;
-        audio.volume = Math.max(0, Math.min(target > currentVol ? target : 1, audio.volume));
-
-    }, 50);
-}
-
-// Start all BGMs with only fyberverse audible
-function startAllBgm() {
-    Object.entries(bgm).forEach(([key, audio]) => {
-        audio.volume = (key === "fyberverse" ? 1 : 0) * BGM_MASTER_VOL;
-        audio.play().catch(() => { });
-    });
-    currentBgm = "fyberverse";
-    bgmEnabled = true;
-    vizRemove(playBgmBtn);
-    updateSettingsButtonText('toggleMusic', 'Mute Music');
-}
-
-
-
-
-
 /* --------------------------
     Camera / Drag / Parallax
     -------------------------- */
@@ -195,39 +129,6 @@ function setMenuStageTransform(x, y, options = {}) {
         });
     }
 }
-
-/*
-// Shared function used by mouse/touch/wheel to update transforms
-function setMenuStageTransform(x, y, options = {}) {
-    const scale = getCSSVar('--menu-stage-scale');
-    menuStage.style.transition = options.transition || menuStage.style.transition;
-    menuStage.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-
-}
-
-function wrap(v, min, max) {
-    const range = max - min;
-    return ((((v - min) % range) + range) % range) + min;
-}
-
-function moveStars(x, y) {
-    if (!starfield) return;
-
-    const stars = starfield.querySelectorAll('.star');
-
-    stars.forEach(s => {
-        const depth = parseFloat(s.dataset.depth) || 1;
-
-        let px = -x * parallaxFactor * depth + parseInt(s.dataset.x);
-        let py = -y * parallaxFactor * depth + parseInt(s.dataset.y);
-
-        let px2 = wrap(px, -STAR_RANGE, STAR_RANGE);
-        let py2 = wrap(py, -STAR_RANGE, STAR_RANGE);
-        s.style.transition = 'none'
-        s.style.transform = `translate(${px2}px, ${py2}px)`;
-    });
-}
-    */
 
 // Begin drag (mouse or touch)
 function beginDrag(clientX, clientY) {
@@ -323,7 +224,6 @@ function updateCenterButtonVisibility() {
 window.addEventListener('resize', snapCameraToCenter);
 centerBtn.addEventListener('click', (e) => {
     snapCameraToCenter();
-    playSound('sfxClick', SFX_CLICK_VOL);
 });
 
 // Helper function to check if any input element is focused
@@ -573,7 +473,6 @@ function getAllCharacters() {
     menuItems.forEach(menu => {
         if (!menu.labels) return;
         if (menu.menuId === 'random') return;
-        if (menu.menuId.includes('floriverse')) return;
         menu.labels.forEach(label => {
             if (label.cardId && isCharacter(label)) characters.push({ menu, label });
         });
@@ -617,31 +516,9 @@ let isTransitioning = false;
 function openMenu(menu, buttonEl, { skipAnimation = false } = {}) {
     isTransitioning = true;
 
-    // BGM transition when opening menu
-    if (bgmEnabled && !bgmStop) {
-        const rootId = menu.menuId.split("-")[0];
-        const newBgm = menuToBgm[rootId];
-
-        if (silentMenus.has(rootId)) {
-            // Menus that are set to be silent
-            fadeVolume(bgm[currentBgm], 0);
-        } else if (newBgm && newBgm !== currentBgm) {
-            // Menus with new BGM
-            fadeVolume(bgm[currentBgm], 0);
-            fadeVolume(bgm[newBgm], 1);
-
-            currentBgm = newBgm;
-        } else if (!newBgm) {
-            // Menus with no specific BGM = return to fyberverse
-            fadeVolume(bgm[currentBgm], 0);
-            fadeVolume(bgm.fyberverse, 1);
-            currentBgm = "fyberverse";
-        }
-    }
     if (menu.hidden || !buttonEl || skipAnimation) {
         showContentFor(menu);
         history.pushState({}, '', `?m=${menu.menuId}`);
-        playSound('sfxSwap', SFX_SWAP_VOL);
         return;
     }
 
@@ -658,7 +535,6 @@ function openMenu(menu, buttonEl, { skipAnimation = false } = {}) {
 
         openCardById(targetMenu.menuId, targetLabel.cardId, true)
         vizAdd(rerollBtn);
-        playSound('sfxSwap', SFX_SWAP_VOL);
         return;
     }
 
@@ -696,7 +572,6 @@ function openMenu(menu, buttonEl, { skipAnimation = false } = {}) {
         }, parseInt(speed));
     });
 
-    playSound('sfxWarp', SFX_WARP_VOL);
 }
 
 
@@ -787,8 +662,7 @@ function showContentFor(menu, sort = null) {
     isTransitioning = false;
     shownMenu = menu;
     contentTitle.textContent = menu.name;
-    const addTicker = menu.menuId.includes("nansenz") ? `<br><br><div class="ticker-bar"><div class="ticker-text"></div></div>` : '';
-    contentSubtitle.innerHTML = menu.subtitle + addTicker;
+    contentSubtitle.textContent = menu.subtitle;
     toggleView({ focused: true, show: false });
     toggleView({ content: true, show: true });
     const parentMenu = menuItems.find(m => m.menuId === menu.parent);
@@ -821,7 +695,6 @@ function showContentFor(menu, sort = null) {
                 linkIcon.classList.remove('copied');
                 linkIcon.title = 'Copy shareable link';
             }, 1500);
-            playSound('sfxLink', SFX_LINK_VOL);
         });
         contentTitle.appendChild(linkIcon);
     }
@@ -1177,16 +1050,12 @@ function focusCard(cardEl, label, menu = null) {
         icon.classList.add('copied');
         icon.title = 'Copied!';
         setTimeout(() => { icon.classList.remove('copied'); icon.title = 'Copy shareable link'; }, 1500);
-        playSound('sfxLink', SFX_LINK_VOL);
     });
     const navMenuCode = label.currentMenu || menu.menuId;
     history.pushState({}, '', `?m=${navMenuCode}&i=${label.cardId}`);
 
     // set up image handlers inside detailArea
     imgConHandler(detailArea);
-
-    // handle script converters if applicable
-    focusCardScriptHandler(label);
 
     // hide cards grid and show focused layout
     cardsContainer.querySelectorAll('.cards-grid, .card-separator, .section-header').forEach(el => el.classList.add('hidden'));
@@ -1201,7 +1070,6 @@ function focusCard(cardEl, label, menu = null) {
     initLazyLoad();
     detailArea.scrollTop = 0;
 
-    playSound('sfxSwap', SFX_SWAP_VOL);
 }
 
 
@@ -1272,12 +1140,10 @@ document.addEventListener('click', (e) => {
     overlay.innerHTML = `<img src="${img.src}" alt="preview" ${caption ? 'data-hasCaption=true' : ''}>${caption}${subcaption}`;
     vizAdd(overlay);
     disableZoom();
-    playSound('sfxPageOpen', SFX_PAGE_OPEN_VOL);
 
     overlay.addEventListener('click', () => {
         vizRemove(overlay);
         enableZoom();
-        playSound('sfxPageClose', SFX_PAGE_CLOSE_VOL);
     }, { once: true });
 });
 
@@ -1408,7 +1274,7 @@ function scaleInlineStyles(element, scaleFactor) {
 /* --------------------------
     Starfield generation
     -------------------------- */
-function createStarfield(layerCount = 3, starsPerLayer = 30) {
+function createStarfield(layerCount = 3, starsPerLayer = 15) {
     if (!starfield) return;
     for (let l = 0; l < layerCount; l++) {
         const layer = document.createElement('div');
@@ -1429,71 +1295,9 @@ function createStarfield(layerCount = 3, starsPerLayer = 30) {
     }
 }
 
-/*
-function createStarfield(starCount = 200) {
-    if (!starfield) return;
-    for (let i = 0; i < starCount; i++) {
-        const star = document.createElement('div');
-        star.classList.add('star');
-        const size = Math.random() * 5 + 1;
-        star.dataset.depth = 0.5 + (i / starCount) * 1;
-        star.style.width = `${size}px`;
-        star.style.height = `${size}px`;
-        star.style.left = `50%`;
-        star.style.top = `50%`;
-        star.dataset.x = (Math.random() * STAR_RANGE * 2 - STAR_RANGE) * 1;
-        star.dataset.y = (Math.random() * STAR_RANGE * 2 - STAR_RANGE) * 1;
-        star.style.animationDelay = `-${Math.random() * 5}s`;
-        starfield.appendChild(star);
-    }
-}
-*/
 
 
 
-/* --------------------------
-    Audios
-    --------------------------*/
-
-// button clicks : sfx
-document.addEventListener('click', (e) => {
-    if (e.target.closest('#detailArea button') || e.target.closest('.card .excerpt button')) {
-        playSound('sfxClick', SFX_CLICK_VOL);
-    }
-});
-
-// play sfx
-function playSound(soundId, volume = 1) {
-    s = document.getElementById(soundId);
-    if (!s) return;
-    s.pause();
-    s.currentTime = 0;
-    s.volume = soundId.includes('bgm') ? volume * MASTER_VOL * BGM_MASTER_VOL : volume * MASTER_VOL * SFX_MASTER_VOL;
-    s.play().catch(() => { });
-}
-
-const bgmList = Object.values(bgm);
-
-// Background tab detection
-let lastSeen;
-let bgmLoop = function () {
-    lastSeen = Date.now();
-    setTimeout(bgmLoop, 50);
-};
-bgmLoop();
-
-// Pause all BGM on tab blur
-window.addEventListener('blur', () => {
-    bgmList.forEach(audio => audio.pause());
-});
-
-// Resume all BGM on tab focus
-window.addEventListener('focus', () => {
-    if (!bgmEnabled) return;
-    bgmList.forEach(audio => {
-        audio.play().catch(() => { });
-    });
-});
 
 /* --------------------------
     Search
@@ -1655,7 +1459,6 @@ searchBtn?.addEventListener('click', () => {
 });
 
 function openSearchBox() {
-    playSound('sfxClick', SFX_CLICK_VOL);
     searchBox.showModal();
     vizRemove(searchBtn);
 }
@@ -1664,7 +1467,6 @@ searchBox.addEventListener('close', () => {
     if (searchText.value.trim() !== '') {
         search();
     } else {
-        playSound('sfxClick', SFX_CLICK_VOL);
     };
 });
 
@@ -1680,16 +1482,6 @@ cancelSearch.addEventListener('click', () => {
     searchBox.close();
     vizAdd(searchBtn);
 });
-
-// button to play bgm
-const playBgmBtn = document.getElementById('playBgmBtn');
-playBgmBtn.addEventListener("click", () => {
-    if (!bgmEnabled) {
-        startAllBgm();
-    }
-    playSound("sfxClick", SFX_CLICK_VOL);
-});
-
 
 // button to hide ui elements
 const hideBtn = document.getElementById('hideBtn')
@@ -1740,7 +1532,6 @@ function toggleUIs() {
     } else {
         showUIs();
     }
-    playSound('sfxClick', SFX_CLICK_VOL);
 }
 
 // Toggle function for the hide button
@@ -2044,7 +1835,6 @@ function toggleView({ content = false, focused = false, show = true } = {}) {
             vizRemove(hideBtn);
             vizRemove(centerBtn);
             vizRemove(settingsBtn);
-            if (!bgmEnabled) vizRemove(playBgmBtn);
             menuStage.classList.add('blur');
             starfield?.classList.add('blur');
 
@@ -2059,7 +1849,6 @@ function toggleView({ content = false, focused = false, show = true } = {}) {
 
             vizAdd(hideBtn);
             vizAdd(settingsBtn);
-            if (!bgmEnabled) vizAdd(playBgmBtn);
             updateCenterButtonVisibility();
             menuStage.classList.remove('blur');
             starfield?.classList.remove('blur');
@@ -2097,17 +1886,6 @@ function vizRemove(e) {
     e.classList.remove('visible');
     e.setAttribute('aria-hidden', 'true');
 }
-
-
-
-/* --------------------------
-    Service worker registration
-    -------------------------- */
-
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(err => console.error('SW registration failed:', err));
-}
-
 
 
 /* --------------------------
